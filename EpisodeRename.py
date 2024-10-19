@@ -134,7 +134,6 @@ def main():
         base_path = args.path
 
     else:
-        cwd = os.getcwdb()
         file_name = "configuration.json"
 
         with open(file_name, 'r') as jf:
@@ -151,7 +150,6 @@ def main():
     if not os.path.exists(base_path):
         exit(f"Failed to find path: {base_path}")
 
-    print(base_path)
     season_ids = get_show_season_ids(id)
     
     for season_num, season in enumerate(os.scandir(base_path)):
