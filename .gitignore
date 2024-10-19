@@ -1,3 +1,8 @@
+# Configuration file for path to media files
+configuration.json
+
+.vscode
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
