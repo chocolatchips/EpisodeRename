@@ -121,6 +121,7 @@ def main():
     parser.add_argument("-n", "--name", type=str, help="Show name", required=True)
     parser.add_argument("-y", "--year", type=int, help="Year premiered", required=False)
     parser.add_argument("-p", "--path", type=str, help="Path to show", required=False)
+    parser.add_argument("--merge", action=argparse.BooleanOptionalAction, help="Merge split episodes")
 
     args = parser.parse_args()
     
@@ -137,6 +138,8 @@ def main():
     id = get_show_id(info)     
 
     show_title = f"{title} ({premier})"
+
+    merge = args.merge
 
     if args.path:
         base_path = args.path
@@ -172,7 +175,7 @@ def main():
 
         for episode_num, episode in enumerate(episode_list):
             episode_name = sanitize_filename(season_episodes[episode_num + res]["name"])
-            if skip_split_episode(episode_name):
+            if merge and skip_split_episode(episode_name):
                 res += 1
                 episode_name = sanitize_split_episode_name(episode_name)
 
