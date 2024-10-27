@@ -92,7 +92,15 @@ def find_disc_num(input):
     
     return None
 
-
+def skip_split_episode(input_string):
+    pattern = r'\(\d\)$'
+    found = re.search(pattern, input_string)
+    return found is not None
+    
+def sanitize_split_episode_name(input_string):
+    pattern = r'\(\d\)$'
+    sanitized_string = re.sub(pattern, '', input_string)
+    return sanitized_string
 
 def sanitize_filename(input_string):
     restricted_characters = r'[\\/:*?"<>|]'
@@ -151,17 +159,31 @@ def main():
         exit(f"Failed to find path: {base_path}")
 
     season_ids = get_show_season_ids(id)
-    
+
     for season_num, season in enumerate(os.scandir(base_path)):
         season_path = os.path.join(base_path, season.name)
+        episode_list = os.listdir(season_path)
+
+        if len(episode_list) == 0:
+            continue
+
         season_episodes = get_episodes_for_season_id(season_ids[season_num])
-        
-        for episode_num, episode in enumerate(os.scandir(season_path)):
-            episode_name = sanitize_filename(season_episodes[episode_num]["name"])
+        res = 0
+
+        for episode_num, episode in enumerate(episode_list):
+            episode_name = sanitize_filename(season_episodes[episode_num + res]["name"])
+            if skip_split_episode(episode_name):
+                res += 1
+                episode_name = sanitize_split_episode_name(episode_name)
+
             formated = format_file_name(show_title, season_num+1, episode_num+1, episode_name)
-            ep_path = os.path.join(season_path, episode.name)
+            ep_path = os.path.join(season_path, episode)
             updated_path = os.path.join(season_path, formated)
             os.rename(ep_path, updated_path)
+        
+        print(f"Season {season_num+1} completed")
+
+    print("Episode renaming completed")
 
 if __name__ == "__main__":
     main()
