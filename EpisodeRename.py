@@ -108,19 +108,81 @@ def sanitize_filename(input_string):
     
     return sanitized_string
 
-
-
 def format_file_name(show_title, season_num, episode_num, episode_name):
     return f"{show_title} - s{season_num:02}e{episode_num:02} - {episode_name}.mp4"
 
+def rename_all_seasons(base_path, season_ids, merge, show_title):
+    for season_num, season in enumerate(os.scandir(base_path)):
+        season_path = os.path.join(base_path, season.name)
+        episode_files = os.listdir(season_path)
 
+        if len(episode_files) == 0:
+            continue
+
+        season_episodes = get_episodes_for_season_id(season_ids[season_num])
+
+        get_new_ep_names(episode_files, season_episodes, merge, show_title, season_path, season_num+1)
+        print(f"Season {season_num+1} completed")
+
+def rename_season(base_path, season_num, season_id, merge, show_title):
+    season_path = os.path.join(base_path, f"Season {season_num}")
+    if not os.path.exists(season_path):
+        print(f"{season_path} is not valid path")
+        return
+
+    episode_files = os.listdir(season_path)
+    season_episodes = get_episodes_for_season_id(season_id)
+    
+    ep_to_rename = get_new_ep_names(episode_files, season_episodes, merge, show_title, season_path, season_num)
+    
+    if verify_rewrite(ep_to_rename):
+        rename_episodes(ep_to_rename, season_path)
+        print(f"Season {season_num} completed")
+    else:
+        print(f"Sesaon {season_num} skipped")
+    
+
+def verify_rewrite(ep_to_rename):
+    print_for_verify(ep_to_rename)
+    while(True):
+        res = input("Confirm rewrite (Y/n):")
+        if res == 'Y':
+            return True
+        if res == 'n':
+            return False
+
+def print_for_verify(ep_to_rename):
+    for i in ep_to_rename:
+        print(f"{i[0]} -> {i[1]}")
+
+def get_new_ep_names(episode_files, season_episodes, merge, show_title, season_path, season_num):
+    res = 0
+    ep_to_rename = []
+    for episode_num, episode in enumerate(episode_files):
+            if episode_num >= len(season_episodes):
+                return
+            episode_name = sanitize_filename(season_episodes[episode_num + res]["name"])
+            if merge and skip_split_episode(episode_name):
+                res += 1
+                episode_name = sanitize_split_episode_name(episode_name)
+
+            formated = format_file_name(show_title, season_num, episode_num+1, episode_name)
+            ep_to_rename.append((episode, formated))
+            
+    return ep_to_rename
+
+def rename_episodes(ep_to_rename, season_path):
+    for ep in ep_to_rename:
+        os.rename(os.path.join(season_path, ep[0]), os.path.join(season_path, ep[1]))
+
+    
 
 def main():
-
     parser = argparse.ArgumentParser(description="Simple program to rename series files to match Plex Server naming conventions.")
     parser.add_argument("-n", "--name", type=str, help="Show name", required=True)
     parser.add_argument("-y", "--year", type=int, help="Year premiered", required=False)
     parser.add_argument("-p", "--path", type=str, help="Path to show", required=False)
+    parser.add_argument("-s", "--season", type=int, help="Season to rename", required=False)
     parser.add_argument("--merge", action=argparse.BooleanOptionalAction, help="Merge split episodes")
 
     args = parser.parse_args()
@@ -163,28 +225,10 @@ def main():
 
     season_ids = get_show_season_ids(id)
 
-    for season_num, season in enumerate(os.scandir(base_path)):
-        season_path = os.path.join(base_path, season.name)
-        episode_list = os.listdir(season_path)
-
-        if len(episode_list) == 0:
-            continue
-
-        season_episodes = get_episodes_for_season_id(season_ids[season_num])
-        res = 0
-
-        for episode_num, episode in enumerate(episode_list):
-            episode_name = sanitize_filename(season_episodes[episode_num + res]["name"])
-            if merge and skip_split_episode(episode_name):
-                res += 1
-                episode_name = sanitize_split_episode_name(episode_name)
-
-            formated = format_file_name(show_title, season_num+1, episode_num+1, episode_name)
-            ep_path = os.path.join(season_path, episode)
-            updated_path = os.path.join(season_path, formated)
-            os.rename(ep_path, updated_path)
-        
-        print(f"Season {season_num+1} completed")
+    if args.season and 0 < args.season < len(season_ids):
+        rename_season(base_path, args.season, season_ids[args.season-1], merge, show_title)
+    else:
+        rename_all_seasons(base_path, season_ids, merge, show_title)
 
     print("Episode renaming completed")
 
